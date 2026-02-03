@@ -1,0 +1,313 @@
+// Binance API Configuration
+const BINANCE_REST_API = 'https://api.binance.com/api/v3';
+const BINANCE_WS_BASE = 'wss://stream.binance.com:9443/ws';
+
+// State Management
+let cryptoData = [];
+let websocket = null;
+let reconnectTimeout = null;
+let lastUpdateTime = Date.now();
+
+// DOM Elements
+const cryptoGrid = document.getElementById('crypto-grid');
+const statusBar = document.getElementById('status-bar');
+const lastUpdateElement = document.getElementById('last-update');
+
+// Initialize the application
+async function init() {
+    try {
+        updateStatus('connecting', 'Fetching cryptocurrency data...');
+        await fetchTopCryptos();
+        renderCryptoCards();
+        connectWebSocket();
+    } catch (error) {
+        console.error('Initialization error:', error);
+        updateStatus('error', 'Failed to load data');
+    }
+}
+
+// Fetch top 10 cryptocurrencies by 24h volume
+async function fetchTopCryptos() {
+    try {
+        const response = await fetch(`${BINANCE_REST_API}/ticker/24hr`);
+        if (!response.ok) throw new Error('Failed to fetch data');
+        
+        const data = await response.json();
+        
+        // Filter for USDT pairs and sort by 24h volume
+        const usdtPairs = data
+            .filter(ticker => ticker.symbol.endsWith('USDT'))
+            .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+            .slice(0, 10);
+        
+        cryptoData = usdtPairs.map((ticker, index) => ({
+            symbol: ticker.symbol,
+            name: ticker.symbol.replace('USDT', ''),
+            rank: index + 1,
+            price: parseFloat(ticker.lastPrice),
+            priceChange: parseFloat(ticker.priceChange),
+            priceChangePercent: parseFloat(ticker.priceChangePercent),
+            high24h: parseFloat(ticker.highPrice),
+            low24h: parseFloat(ticker.lowPrice),
+            volume24h: parseFloat(ticker.volume),
+            quoteVolume24h: parseFloat(ticker.quoteVolume)
+        }));
+        
+        updateStatus('connected', 'Connected - Live updates active');
+        updateLastUpdateTime();
+    } catch (error) {
+        console.error('Error fetching crypto data:', error);
+        throw error;
+    }
+}
+
+// Render cryptocurrency cards
+function renderCryptoCards() {
+    cryptoGrid.innerHTML = '';
+    
+    cryptoData.forEach((crypto, index) => {
+        const card = createCryptoCard(crypto, index);
+        cryptoGrid.appendChild(card);
+    });
+}
+
+// Create individual crypto card
+function createCryptoCard(crypto, index) {
+    const card = document.createElement('div');
+    card.className = 'crypto-card';
+    card.id = `crypto-card-${crypto.symbol}`;
+    card.style.animationDelay = `${index * 0.05}s`;
+    
+    const isPositive = crypto.priceChangePercent >= 0;
+    const arrow = isPositive ? '▲' : '▼';
+    const changeClass = isPositive ? 'positive' : 'negative';
+    
+    card.innerHTML = `
+        <div class="card-header">
+            <div class="crypto-info">
+                <div>
+                    <div class="crypto-symbol">${crypto.name}</div>
+                    <div class="crypto-name">${crypto.symbol}</div>
+                </div>
+            </div>
+            <div class="rank-badge">#${crypto.rank}</div>
+        </div>
+        
+        <div class="price-section">
+            <div class="current-price" id="price-${crypto.symbol}">
+                $${formatPrice(crypto.price)}
+            </div>
+            <div class="price-change ${changeClass}">
+                <span class="price-arrow">${arrow}</span>
+                <span>${Math.abs(crypto.priceChangePercent).toFixed(2)}%</span>
+            </div>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-label">24h High</div>
+                <div class="stat-value">$${formatPrice(crypto.high24h)}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">24h Low</div>
+                <div class="stat-value">$${formatPrice(crypto.low24h)}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Volume</div>
+                <div class="stat-value">${formatVolume(crypto.volume24h)}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Volume (USDT)</div>
+                <div class="stat-value">${formatVolume(crypto.quoteVolume24h)}</div>
+            </div>
+        </div>
+    `;
+    
+    return card;
+}
+
+// Connect to Binance WebSocket for real-time updates
+function connectWebSocket() {
+    try {
+        // Create streams for all symbols
+        const streams = cryptoData.map(crypto => 
+            `${crypto.symbol.toLowerCase()}@ticker`
+        ).join('/');
+        
+        const wsUrl = `${BINANCE_WS_BASE}/${streams}`;
+        websocket = new WebSocket(wsUrl);
+        
+        websocket.onopen = () => {
+            console.log('WebSocket connected');
+            updateStatus('connected', 'Connected - Live updates active');
+            
+            // Reconnect every 23 hours (Binance disconnects after 24h)
+            if (reconnectTimeout) clearTimeout(reconnectTimeout);
+            reconnectTimeout = setTimeout(() => {
+                console.log('Reconnecting WebSocket...');
+                websocket.close();
+                connectWebSocket();
+            }, 23 * 60 * 60 * 1000);
+        };
+        
+        websocket.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                updateCryptoPrice(data);
+                updateLastUpdateTime();
+            } catch (error) {
+                console.error('Error parsing WebSocket message:', error);
+            }
+        };
+        
+        websocket.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            updateStatus('error', 'Connection error');
+        };
+        
+        websocket.onclose = () => {
+            console.log('WebSocket closed');
+            updateStatus('connecting', 'Reconnecting...');
+            
+            // Attempt to reconnect after 5 seconds
+            setTimeout(() => {
+                connectWebSocket();
+            }, 5000);
+        };
+    } catch (error) {
+        console.error('Error connecting WebSocket:', error);
+        updateStatus('error', 'Failed to connect');
+    }
+}
+
+// Update crypto price from WebSocket data
+function updateCryptoPrice(data) {
+    const symbol = data.s; // Symbol (e.g., BTCUSDT)
+    const newPrice = parseFloat(data.c); // Current price
+    
+    // Find the crypto in our data
+    const cryptoIndex = cryptoData.findIndex(c => c.symbol === symbol);
+    if (cryptoIndex === -1) return;
+    
+    const crypto = cryptoData[cryptoIndex];
+    const oldPrice = crypto.price;
+    
+    // Update the price
+    crypto.price = newPrice;
+    crypto.priceChange = parseFloat(data.p);
+    crypto.priceChangePercent = parseFloat(data.P);
+    crypto.high24h = parseFloat(data.h);
+    crypto.low24h = parseFloat(data.l);
+    crypto.volume24h = parseFloat(data.v);
+    crypto.quoteVolume24h = parseFloat(data.q);
+    
+    // Update the DOM with animation
+    const priceElement = document.getElementById(`price-${symbol}`);
+    if (priceElement) {
+        // Remove previous animation classes
+        priceElement.classList.remove('price-increase', 'price-decrease');
+        
+        // Add animation based on price movement
+        if (newPrice > oldPrice) {
+            priceElement.classList.add('price-increase');
+        } else if (newPrice < oldPrice) {
+            priceElement.classList.add('price-decrease');
+        }
+        
+        // Update the price text
+        priceElement.textContent = `$${formatPrice(newPrice)}`;
+        
+        // Update the card's price change indicator
+        const card = document.getElementById(`crypto-card-${symbol}`);
+        if (card) {
+            const isPositive = crypto.priceChangePercent >= 0;
+            const arrow = isPositive ? '▲' : '▼';
+            const changeClass = isPositive ? 'positive' : 'negative';
+            
+            const priceChangeElement = card.querySelector('.price-change');
+            if (priceChangeElement) {
+                priceChangeElement.className = `price-change ${changeClass}`;
+                priceChangeElement.innerHTML = `
+                    <span class="price-arrow">${arrow}</span>
+                    <span>${Math.abs(crypto.priceChangePercent).toFixed(2)}%</span>
+                `;
+            }
+            
+            // Update 24h stats
+            const statsValues = card.querySelectorAll('.stat-value');
+            if (statsValues.length >= 4) {
+                statsValues[0].textContent = `$${formatPrice(crypto.high24h)}`;
+                statsValues[1].textContent = `$${formatPrice(crypto.low24h)}`;
+                statsValues[2].textContent = formatVolume(crypto.volume24h);
+                statsValues[3].textContent = formatVolume(crypto.quoteVolume24h);
+            }
+        }
+    }
+}
+
+// Update status indicator
+function updateStatus(status, message) {
+    const statusDot = statusBar.querySelector('.status-dot');
+    const statusText = statusBar.querySelector('.status-text');
+    
+    // Remove all status classes
+    statusDot.classList.remove('connected', 'error');
+    
+    // Add appropriate class
+    if (status === 'connected') {
+        statusDot.classList.add('connected');
+    } else if (status === 'error') {
+        statusDot.classList.add('error');
+    }
+    
+    statusText.textContent = message;
+}
+
+// Update last update time
+function updateLastUpdateTime() {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString();
+    lastUpdateElement.textContent = `Last update: ${timeString}`;
+    lastUpdateTime = Date.now();
+}
+
+// Format price with appropriate decimal places
+function formatPrice(price) {
+    if (price >= 1000) {
+        return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } else if (price >= 1) {
+        return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    } else {
+        return price.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 8 });
+    }
+}
+
+// Format volume with K, M, B suffixes
+function formatVolume(volume) {
+    if (volume >= 1e9) {
+        return `${(volume / 1e9).toFixed(2)}B`;
+    } else if (volume >= 1e6) {
+        return `${(volume / 1e6).toFixed(2)}M`;
+    } else if (volume >= 1e3) {
+        return `${(volume / 1e3).toFixed(2)}K`;
+    } else {
+        return volume.toFixed(2);
+    }
+}
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    if (websocket) {
+        websocket.close();
+    }
+    if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+    }
+});
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}

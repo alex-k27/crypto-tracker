@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Real-time cryptocurrency price tracker showing customizable cryptocurrencies with live updates from Binance API">
+    <title>Crypto Tracker - Real-Time Cryptocurrency Prices</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="src/css/styles.css">
+</head>
+
+<body>
+    <div class="background-gradient"></div>
+
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <h1 class="header-title">
+                    <span class="crypto-icon">₿</span>
+                    Crypto Tracker
+                </h1>
+                <button class="settings-btn" id="settings-btn" title="Settings">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M12 1v6m0 6v6m0-18a10 10 0 0 1 0 20 10 10 0 0 1 0-20z"></path>
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+            <p class="header-subtitle">Real-time prices for cryptocurrencies with customizable themes</p>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+            <div class="status-bar" id="status-bar">
+                <div class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Connecting...</span>
+                </div>
+                <div class="last-update" id="last-update">Last update: Never</div>
+            </div>
+
+            <div class="crypto-grid" id="crypto-grid">
+                <!-- Cryptocurrency cards will be inserted here dynamically -->
+                <div class="skeleton-card">
+                    <div class="skeleton-shimmer"></div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-shimmer"></div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-shimmer"></div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-shimmer"></div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-shimmer"></div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-shimmer"></div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-shimmer"></div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-shimmer"></div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-shimmer"></div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-shimmer"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Settings Panel -->
+    <div class="settings-panel" id="settings-panel">
+        <!-- Settings content will be inserted by JavaScript -->
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p>Data provided by <a href="https://www.binance.com" target="_blank" rel="noopener">Binance API</a> • Open
+                Source on <a href="https://github.com/yourusername/crypto-tracker" target="_blank"
+                    rel="noopener">GitHub</a></p>
+        </div>
+    </footer>
+
+    <script type="module" src="src/js/app.js"></script>
+</body>
+
+</html>
