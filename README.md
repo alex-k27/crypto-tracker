@@ -24,7 +24,7 @@ Simply open `index.html` in your browser or serve it with any static file server
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/crypto-tracker.git
+   git clone https://github.com/alex-k27/crypto-tracker.git
    cd crypto-tracker
    ```
 
