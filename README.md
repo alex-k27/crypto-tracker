@@ -122,10 +122,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Icons from [Unicode symbols](https://unicode-table.com/)
 - Inspired by modern crypto tracking platforms
 
-## 📧 Contact
-
-Project Link: [https://github.com/yourusername/crypto-tracker](https://github.com/yourusername/crypto-tracker)
-
 ---
 
 **⭐ Star this repo if you find it helpful!**
